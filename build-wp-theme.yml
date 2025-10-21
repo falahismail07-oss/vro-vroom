@@ -17,8 +17,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -26,10 +26,11 @@ jobs:
       - name: Build (Vite)
         run: npm run build
 
-      - name: Create WordPress theme (PHP files + copy dist)
+      - name: Create WordPress theme and copy dist
+        shell: bash
         run: |
           set -e
-          THEME=creativestudio_dynamic
+          THEME="creativestudio_dynamic"
           mkdir -p "$THEME"
 
           cat > "$THEME/style.css" <<'EOF'
@@ -51,4 +52,21 @@ EOF
           cat > "$THEME/functions.php" <<'EOF'
 <?php
 add_action('after_setup_theme', function () {
-  add_theme_support('tit
+  add_theme_support('title-tag');
+  add_theme_support('post-thumbnails');
+  add_theme_support('html5', ['style','script','gallery','caption','search-form']);
+  add_theme_support('responsive-embeds');
+  register_nav_menus(['primary' => __('Primary Menu','creativestudio-dynamic')]);
+});
+function csd_enqueue_dir($url, $path) {
+  if (!is_dir($path)) return;
+  foreach (glob($path.'/*.css') as $css) {
+    $h='csd-'.md5($css); wp_enqueue_style($h, $url.'/'.basename($css), [], filemtime($css));
+  }
+  foreach (glob($path.'/*.js') as $js) {
+    $h='csd-'.md5($js); wp_enqueue_script($h, $url.'/'.basename($js), [], filemtime($js), true);
+    wp_script_add_data($h,'type','module');
+  }
+}
+add_action('wp_enqueue_scripts', function () {
+  wp_enqueue_style('csd-style', get_stylesheet_uri(), [], filemtime(get_styleshee_
